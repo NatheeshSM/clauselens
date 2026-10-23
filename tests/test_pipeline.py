@@ -85,3 +85,32 @@ def test_infer_policy_from_example():
     assert policy["max_renewal_notice_days"] == 90
     assert policy["require_liability_cap"] is True
     assert policy["allowed_jurisdictions"] == ["Delaware"]
+
+
+def test_pdf_and_docx_report_generation():
+    from report import generate_pdf_report, generate_counter_proposal_docx, generate_counter_proposal_markdown
+    res = run()
+    run_data = {
+        "name": "nasty_contract.txt",
+        "flags": [f.to_dict() for f in res["flags"]],
+        "checks": res["checks"],
+        "summary": res["summary"],
+        "stats": res["stats"],
+    }
+    pdf_bytes = generate_pdf_report(run_data)
+    assert len(pdf_bytes) > 1000
+    assert pdf_bytes.startswith(b"%PDF")
+
+    docx_bytes = generate_counter_proposal_docx(run_data)
+    assert len(docx_bytes) > 1000
+
+    md_text = generate_counter_proposal_markdown(run_data)
+    assert "Negotiation Counter-Proposal" in md_text
+
+
+def test_ground_truth_benchmark_suite():
+    from evaluator import run_benchmark
+    report = run_benchmark()
+    assert report["accuracy_pct"] == 100.0
+    assert report["passed_contracts"] == report["total_contracts"] == 5
+    assert report["passed_checks"] == report["total_checks"] == 20

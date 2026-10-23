@@ -49,14 +49,17 @@ def parse_docx(path):
 
 
 def parse_pdf(path):
-    import fitz  # PyMuPDF
+    try:
+        import pymupdf as fitz
+    except ImportError:
+        import fitz
     chunks, last = [], ""
     pos = 0
     doc = fitz.open(path)
     for pno, page in enumerate(doc, start=1):
         blocks = page.get_text("blocks")  # (x0,y0,x1,y1,text,block_no,type)
         if not blocks or not any(b[4].strip() for b in blocks):
-            raise ValueError(f"Page {pno} has no text layer: scanned PDF, add OCR (pytesseract).")
+            raise ValueError(f"Page {pno} has no text layer (scanned PDF image). ClauseLens requires a text layer or OCR pre-processing.")
         for b in blocks:
             text = " ".join(b[4].split())
             if not text:

@@ -5,3 +5,4 @@ anthropic
 reportlab
 pytest
 python-dotenv
+supabase

@@ -1,0 +1,12 @@
+Expected results with the DEFAULT policy
+(payment <= 30 days, no auto-renewal, liability must be capped, jurisdiction = India)
+
+1. sample_contract_risky.docx    -> 4 of 4 fail. Payment 60 days (clock starts at approval), auto-renews (90 days notice),
+                                    liability uncapped + contradictory clauses, Delaware.
+2. sample_contract_safe.docx     -> All pass. 30 days, no renewal, capped, courts in Chennai, India.
+3. sample_contract_tricky.docx   -> 3 of 4 fail. "two (2) months of acceptance" = 60 days, "renews automatically" (30 days notice),
+                                    liability capped (PASS), Singapore.
+4. sample_contract_missing.docx  -> 3 of 4 flagged as MISSING: no payment term, no liability cap, no governing law. Renewal passes.
+5. sample_contract_risky.pdf     -> 4 of 4 fail, real page numbers: payment 90 days (clock starts at receipt) on page 1;
+                                    auto-renewal, unlimited liability and New York on page 2.
+Note: .docx files have no real pages, so every flag shows page 1. Only the PDF shows different pages.
