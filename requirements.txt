@@ -1,0 +1,7 @@
+pymupdf
+python-docx
+streamlit
+anthropic
+reportlab
+pytest
+python-dotenv

@@ -1,0 +1,7 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "Run app", "type": "shell", "command": "streamlit run app.py", "problemMatcher": [] },
+    { "label": "Run checks", "type": "shell", "command": "python tests/run_checks.py", "problemMatcher": [] }
+  ]
+}
