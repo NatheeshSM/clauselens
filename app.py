@@ -1,5 +1,5 @@
 """ClauseLens 2.0 - Policy-Driven Contract Risk Flagger & Verifiable Audit Engine.
-QUANTIX 2K26 · Problem Statement PS02
+Verifiable Contract Risk Flagger & Negotiation Engine
 """
 
 from dotenv import load_dotenv
@@ -412,9 +412,6 @@ def sidebar_policy():
             st.caption("Contracts are parsed locally. When signed in, verified findings are stored in your Supabase workspace.")
         else:
             st.caption("Offline mode processes all documents locally on your machine.")
-        st.markdown("---")
-        st.markdown("### 🏆 QUANTIX 2K26")
-        st.caption("Problem Statement PS02 · Contract Risk Flagger")
 
     return policy, mode
 
@@ -423,7 +420,7 @@ def render_header(run=None):
     st.markdown(
         """
         <div class="brand-header">
-            <span class="brand-badge">ClauseLens 2.0 · QUANTIX 2K26 (PS02)</span>
+            <span class="brand-badge">ClauseLens 2.0 · Verifiable Contract Risk Flagger</span>
             <h1 class="brand-title">Contract Risk Flagger & Verifiable Audit Engine</h1>
             <p class="brand-sub">
                 Deterministic policy enforcement, zero-hallucination verbatim quote verification,
@@ -1543,7 +1540,7 @@ def render_benchmark_tab():
     st.markdown("### 🏆 Ground-Truth Benchmark & Jury Verification")
     st.markdown(
         """
-        Automated test harness validating ClauseLens against the **QUANTIX 2K26 PS02 Ground Truth Corpus**.
+        Automated test harness validating ClauseLens against the **Ground Truth Contract Corpus**.
         Executes real PDF and DOCX contracts and measures extraction accuracy, deterministic rule verdicts,
         and quote verbatim precision.
         """
@@ -1611,7 +1608,7 @@ def render_benchmark_tab():
         <div style="background:linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(124, 92, 255, 0.18)); border:1px solid {banner_color}; border-radius:18px; padding:1.4rem 1.8rem; margin:1rem 0;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
                 <div>
-                    <span style="color:#6ee7b7; font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em;">QUANTIX 2K26 Validation Score</span>
+                    <span style="color:#6ee7b7; font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em;">Production Validation Score</span>
                     <h1 style="margin:0.2rem 0; font-size:2.4rem; font-weight:800; color:#ffffff;">{acc:.1f}% ACCURACY</h1>
                     <div style="color:var(--muted); font-size:0.95rem;">{report['passed_contracts']} of {report['total_contracts']} contracts passed · {report['passed_checks']} of {report['total_checks']} policy checks perfectly matched</div>
                 </div>
@@ -1731,7 +1728,7 @@ def render_methodology_tab():
     st.markdown("### 📖 Methodology, Academic Lineage & Problem Data")
     st.markdown(
         """
-        ClauseLens directly addresses **QUANTIX 2K26 Problem Statement PS02 (Contract Risk Flagger)**.
+        ClauseLens is a production-grade **Verifiable Contract Risk Flagger & Negotiation Engine**.
         It bridges the gap between academic rule generation research and practical, explainable contract protection.
         """
     )

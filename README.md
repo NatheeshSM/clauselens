@@ -1,6 +1,5 @@
 # 🛡️ ClauseLens 2.0: Verifiable Contract Risk Flagger
 
-> **QUANTIX 2K26 · Problem Statement PS02: Contract Risk Flagger**  
 > *Deterministic policy enforcement, zero-hallucination verbatim quote verification, and automated negotiation counter-wording for freelancers and small vendors.*
 
 ---
@@ -57,7 +56,7 @@ Freelancers and small vendors sign long, dense contracts without legal counsel. 
    - Expiring read-only share links contain verified findings, not the original uploaded file.
    - Create and complete renewal or notice reminders. The app displays reminders but does not send email or push notifications.
 
-7. **QUANTIX 2K26 Ground Truth Benchmark:**
+7. **Automated Ground Truth Benchmark:**
    - Built-in automated evaluation harness executing across 5 golden benchmark contracts with **97.0% accuracy (20/20 checks matched, 97.0% benchmark score)**.
 
 8. **Local-First Processing:**
@@ -81,7 +80,7 @@ clauselens/
 ├── db.py               # Local SQLite audit log & portfolio persistence layer
 ├── cloud.py            # Optional Supabase authentication, workspace, and reminder client
 ├── supabase_schema.sql # Hosted schema, functions, and row-level security policies
-├── evaluator.py        # Automated QUANTIX 2K26 benchmark evaluation suite
+├── evaluator.py        # Automated benchmark evaluation suite
 ├── cli.py              # Headless terminal runner
 ├── requirements.txt    # Production dependencies
 ├── sample/             # 6 Golden benchmark contracts & ground-truth specs
@@ -121,7 +120,7 @@ Open [http://localhost:8501](http://localhost:8501) in your browser. Click any o
 
 Authenticated analyses save their summary and findings, including quoted contract excerpts, to Supabase. Original uploaded files remain local. Share links grant read-only access to the saved findings until their expiry. Review your Supabase project, access policies, and data-retention settings before using real contracts.
 
-### 4. Run Benchmark Suite (QUANTIX 2K26 Jury Mode)
+### 4. Run Benchmark Suite
 ```bash
 python evaluator.py
 ```
