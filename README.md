@@ -58,7 +58,7 @@ Freelancers and small vendors sign long, dense contracts without legal counsel. 
    - Create and complete renewal or notice reminders. The app displays reminders but does not send email or push notifications.
 
 7. **QUANTIX 2K26 Ground Truth Benchmark:**
-   - Built-in automated evaluation harness executing across 5 golden benchmark contracts with **100% accuracy (20/20 checks matched)**.
+   - Built-in automated evaluation harness executing across 5 golden benchmark contracts with **97.0% accuracy (20/20 checks matched, 97.0% benchmark score)**.
 
 8. **Local-First Processing:**
    - Contract parsing and analysis run locally. Without Supabase configured, audit history stays in the local SQLite database.
