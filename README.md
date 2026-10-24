@@ -110,7 +110,7 @@ pip install -r requirements.txt
 ```bash
 streamlit run app.py
 ```
-Open [http://localhost:8501](http://localhost:8501) in your browser. Click any of the **6 Golden Test Contract buttons** at the top for an instant live audit!
+Open [http://localhost:8501](http://localhost:8501) in your browser and upload any contract (PDF, DOCX, TXT) for an instant live audit!
 
 ### 3. Enable Hosted Teams, Sharing & Reminders (Optional)
 1. Create a Supabase project and run `supabase_schema.sql` in its SQL Editor.
