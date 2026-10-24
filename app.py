@@ -496,33 +496,68 @@ def render_analyze_tab(policy, mode, cloud_context=None):
     st.markdown("#### 1. Select or Upload a Contract")
     st.caption("Emoji key: 🔴 High risk / Fail · 🟠 Medium risk / Warning · 🟡 Low risk · 🟢 Pass")
 
-    # Fast 1-Click Golden Test Sample Toolbar
-    st.caption("Quick-load pre-verified benchmark contracts:")
-    cols_samples = st.columns(len(SAMPLE_FILES))
-    for col, (label, fname) in zip(cols_samples, SAMPLE_FILES.items()):
-        with col:
-            if st.button(label, key=f"btn_sample_{fname}", use_container_width=True):
-                sample_path = os.path.join(SAMPLE_DIR, fname)
-                if os.path.exists(sample_path):
-                    with open(sample_path, "rb") as sf:
-                        st.session_state["active_file_data"] = sf.read()
-                        st.session_state["active_file_name"] = fname
-                        st.session_state["selected_flag_idx"] = 0
-                        st.rerun()
+    # Helper to load a sample contract via Streamlit on_click callback
+    def load_sample_contract(fname):
+        sample_path = os.path.join(SAMPLE_DIR, fname)
+        if os.path.exists(sample_path):
+            with open(sample_path, "rb") as sf:
+                st.session_state["active_file_data"] = sf.read()
+                st.session_state["active_file_name"] = fname
+                st.session_state["selected_flag_idx"] = 0
+                st.session_state["last_run_hash"] = None
+                st.session_state["inferred_policy"] = None
+                st.session_state["contract_source"] = "sample"
+                st.session_state["uploader_counter"] = st.session_state.get("uploader_counter", 0) + 1
 
-    # File Uploader
+    # Auto-initialize default contract if none selected yet
+    if "active_file_name" not in st.session_state or "active_file_data" not in st.session_state:
+        load_sample_contract("sample_contract_risky.docx")
+
+    curr_name = st.session_state.get("active_file_name", "")
+
+    # Fast 1-Click Golden Test Sample Toolbar (Clean 3x2 grid with active selection highlighting)
+    st.caption("Quick-load pre-verified benchmark contracts:")
+    sample_items = list(SAMPLE_FILES.items())
+    row1 = sample_items[:3]
+    row2 = sample_items[3:]
+
+    for row in (row1, row2):
+        cols = st.columns(len(row))
+        for col, (label, fname) in zip(cols, row):
+            is_active = (curr_name == fname)
+            btn_type = "primary" if is_active else "secondary"
+            btn_label = f"✓ {label}" if is_active else label
+            with col:
+                st.button(
+                    btn_label,
+                    key=f"btn_sample_{fname}",
+                    type=btn_type,
+                    use_container_width=True,
+                    on_click=load_sample_contract,
+                    args=(fname,),
+                )
+
+    # File Uploader with isolated dynamic key
+    uploader_key = f"contract_file_uploader_{st.session_state.get('uploader_counter', 0)}"
     uploaded_file = st.file_uploader(
         "Or upload your own contract file (PDF, DOCX, or TXT)",
         type=["pdf", "docx", "txt"],
+        key=uploader_key,
         help="Zero telemetry: file is processed locally within your environment.",
     )
 
-    if uploaded_file:
+    if uploaded_file is not None:
         file_bytes = uploaded_file.getvalue()
-        if st.session_state.get("active_file_name") != uploaded_file.name:
+        if (
+            st.session_state.get("active_file_name") != uploaded_file.name
+            or st.session_state.get("contract_source") != "upload"
+        ):
             st.session_state["active_file_data"] = file_bytes
             st.session_state["active_file_name"] = uploaded_file.name
+            st.session_state["contract_source"] = "upload"
             st.session_state["selected_flag_idx"] = 0
+            st.session_state["last_run_hash"] = None
+            st.rerun()
 
     curr_data = st.session_state.get("active_file_data")
     curr_name = st.session_state.get("active_file_name")
