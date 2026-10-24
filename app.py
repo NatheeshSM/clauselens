@@ -1745,62 +1745,6 @@ def render_benchmark_tab():
 
 
 # ==============================================================================
-# TAB 5: METHODOLOGY & RESEARCH BACKING
-# ==============================================================================
-
-def render_methodology_tab():
-    st.markdown("### 📖 Methodology, Academic Lineage & Problem Data")
-    st.markdown(
-        """
-        ClauseLens is a production-grade **Verifiable Contract Risk Flagger & Negotiation Engine**.
-        It bridges the gap between academic rule generation research and practical, explainable contract protection.
-        """
-    )
-
-    c_left, c_right = st.columns(2)
-
-    with c_left:
-        st.markdown(
-            """
-            #### 📊 The Real-World Evidence
-            - **Freelancers Union Survey:** **71% of solo freelancers** report struggling to collect payment on time at some point in their careers.
-            - **Nonpayment Losses:** In a New York Authors Guild / Freelancers Union survey, **62% of respondents** had lost wages to nonpayment, yet **less than 1%** utilized the legal system due to prohibitive litigation costs.
-            - **India MSME Scale:** Delayed payments owed to micro and small enterprises in India stood at **₹7.34 lakh crore (~$88 Billion)** as of March 2024 (GAME, FISME & C2FO Report).
-            - **Contract Review Costs:** Traditional manual legal reviews take ~3 hours or ₹5,000 per contract—putting formal legal defense out of reach for independent professionals.
-            """
-        )
-
-    with c_right:
-        st.markdown(
-            """
-            #### 🔬 Academic Lineage: Kim et al. (2025)
-            ClauseLens builds upon the methodology published by **Kim, Kwon, Lee & Mun (2025)** in *Automation in Construction*:
-            - **BASE 1: Sentence Disassembly:** Disassembling unstructured contract text into contextual atomic propositions.
-            - **BASE 2: Lexicon & Pattern Mapping:** Domain-specific risk lexicons mapping terms to hazard patterns.
-            - **NEW 1: Multi-Format Parsing:** PDF block bounding-box coordinates + DOCX paragraph offsets.
-            - **NEW 2: Verifiable Quote Layer:** Mathematical substring location rejecting paraphrased/hallucinated LLM output.
-            - **NEW 3: User Policy Engine:** Comparing extracted facts with customizable personal rules.
-            - **NEW 4: Actionable Counter-Wording:** Providing instant redline replacements ready to send to clients.
-            """
-        )
-
-    st.markdown("---")
-    st.markdown("#### 🔄 6-Step Verifiable Pipeline Architecture")
-    st.markdown(
-        """
-        ```mermaid
-        flowchart LR
-            A["1. Ingestion (PDF / DOCX)"] --> B["2. Sentence Tokenization"]
-            B --> C["3. Lexicon Detection"]
-            C --> D["4. Verbatim Quote Verification"]
-            D --> E["5. Deterministic Rule Engine"]
-            E --> F["6. Audit Scorecard & PDF Report"]
-        ```
-        """
-    )
-
-
-# ==============================================================================
 # MAIN APPLICATION CONTROLLER
 # ==============================================================================
 
@@ -1818,13 +1762,12 @@ def main():
     policy, mode = sidebar_policy()
     render_header()
 
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "🔍 Audit Workspace",
         "📊 Portfolio & History",
         "📚 Batch & Compare",
         "🤖 Negotiation Studio",
-        "🏆 QUANTIX Benchmark",
-        "📖 Methodology & Research",
+        "🏆 Model Benchmark",
         "☁️ Team & Reminders",
     ])
 
@@ -1844,9 +1787,6 @@ def main():
         render_benchmark_tab()
 
     with tab6:
-        render_methodology_tab()
-
-    with tab7:
         if cloud_context:
             render_team_tab(cloud_context)
         else:
