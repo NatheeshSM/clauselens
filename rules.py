@@ -67,17 +67,18 @@ def infer_policy_from_example(findings):
     policy = dict(DEFAULT_POLICY)
     payment = [f for f in findings if f["type"] == "payment"]
     if payment:
-        policy["max_payment_days"] = max(f["value"].get("days", 30) for f in payment)
+        pay_vals = [int(f["value"].get("days") or 30) for f in payment if f.get("value", {}).get("days") is not None]
+        policy["max_payment_days"] = max(pay_vals, default=30)
     renewal = [f for f in findings if f["type"] == "renewal"]
     if renewal:
-        policy["allow_auto_renewal"] = any(f["value"].get("renews") for f in renewal)
-        notice_days = [f["value"].get("notice_days") for f in renewal if f["value"].get("notice_days")]
+        policy["allow_auto_renewal"] = any(bool(f.get("value", {}).get("renews")) for f in renewal)
+        notice_days = [int(f["value"].get("notice_days")) for f in renewal if f.get("value", {}).get("notice_days")]
         if notice_days:
             policy["max_renewal_notice_days"] = max(notice_days)
     policy["require_liability_cap"] = True
-    jurisdictions = [f["value"].get("location") for f in findings if f["type"] == "jurisdiction"]
+    jurisdictions = [f.get("value", {}).get("location") for f in findings if f["type"] == "jurisdiction"]
     if jurisdictions:
-        policy["allowed_jurisdictions"] = list(dict.fromkeys([j.strip() for j in jurisdictions if j]))
+        policy["allowed_jurisdictions"] = list(dict.fromkeys([str(j).strip() for j in jurisdictions if j]))
     return policy
 
 
@@ -86,7 +87,7 @@ def vague_language_hits(text: str):
     return [phrase for phrase in VAGUE_PHRASES if phrase in low]
 
 
-def evaluate(findings, policy):
+def evaluate(findings, policy=DEFAULT_POLICY):
     """findings: verified findings, each already carrying page/section."""
     flags = []
     by = lambda t: [f for f in findings if f["type"] == t]
@@ -94,33 +95,56 @@ def evaluate(findings, policy):
 
     # 1. Payment checks
     pay = by("payment")
+    try:
+        max_pay = int(policy.get("max_payment_days", 30) or 30)
+    except (ValueError, TypeError):
+        max_pay = 30
+
     if not pay:
         flags.append(Flag(
             "MISSING",
             "Payment terms",
             "No payment deadline found in the contract.",
             "High",
-            f"Add: 'Client shall pay each invoice within {policy['max_payment_days']} days of the invoice date.'",
+            f"Add: 'Client shall pay each invoice within {max_pay} days of the invoice date.'",
             category="Payment",
-            rule_value=f"≤ {policy['max_payment_days']} days",
+            rule_value=f"≤ {max_pay} days",
             contract_value="Not found",
         ))
     for f in pay:
-        d = f["value"]["days"]
-        if d > policy["max_payment_days"]:
+        val = f.get("value", {})
+        raw_d = val.get("days")
+        try:
+            d = int(raw_d) if raw_d is not None else None
+        except (ValueError, TypeError):
+            d = None
+
+        if d is not None and d > max_pay:
             flags.append(Flag(
                 "CONFLICT",
-                f"Max payment delay = {policy['max_payment_days']} days",
-                f"Payment due in {d} days, over your {policy['max_payment_days']}-day limit.",
+                f"Max payment delay = {max_pay} days",
+                f"Payment due in {d} days, over your {max_pay}-day limit.",
                 "High",
-                f"Replace with: 'within {policy['max_payment_days']} days of the invoice date.'",
+                f"Replace with: 'within {max_pay} days of the invoice date.'",
                 category="Payment",
-                rule_value=f"≤ {policy['max_payment_days']} days",
+                rule_value=f"≤ {max_pay} days",
                 contract_value=f"{d} days",
                 **loc(f),
             ))
-        if f["value"].get("clock_starts") in ("approval", "receipt"):
-            clock = f["value"]["clock_starts"]
+        elif d is None:
+            flags.append(Flag(
+                "WARNING",
+                "Indefinite payment deadline",
+                "Payment clause does not specify an exact number of calendar days.",
+                "Medium",
+                f"Add: 'within {max_pay} days of the invoice date.'",
+                category="Payment",
+                rule_value=f"≤ {max_pay} days",
+                contract_value="Not specified",
+                **loc(f),
+            ))
+        if val.get("clock_starts") in ("approval", "receipt"):
+            clock = val["clock_starts"]
             flags.append(Flag(
                 "WARNING",
                 "Payment clock start",
@@ -135,9 +159,21 @@ def evaluate(findings, policy):
 
     # 2. Auto-renewal checks
     ren = by("renewal")
+    allow_renew = bool(policy.get("allow_auto_renewal", False))
+    try:
+        max_notice = int(policy.get("max_renewal_notice_days", 30) or 30)
+    except (ValueError, TypeError):
+        max_notice = 30
+
     for f in ren:
-        v = f["value"]
-        if v.get("renews") and not policy["allow_auto_renewal"]:
+        v = f.get("value", {})
+        raw_notice = v.get("notice_days")
+        try:
+            notice = int(raw_notice) if raw_notice is not None else None
+        except (ValueError, TypeError):
+            notice = None
+
+        if v.get("renews") and not allow_renew:
             flags.append(Flag(
                 "CONFLICT",
                 "No auto-renewal",
@@ -149,23 +185,23 @@ def evaluate(findings, policy):
                 contract_value="Auto-renews automatically",
                 **loc(f),
             ))
-        elif v.get("renews") and (v.get("notice_days") or 0) > policy["max_renewal_notice_days"]:
-            notice = v.get("notice_days")
+        elif v.get("renews") and notice is not None and notice > max_notice:
             flags.append(Flag(
                 "CONFLICT",
-                f"Max cancel notice = {policy['max_renewal_notice_days']} days",
-                f"Cancellation needs {notice} days' notice, over your {policy['max_renewal_notice_days']}-day limit.",
+                f"Max cancel notice = {max_notice} days",
+                f"Cancellation needs {notice} days' notice, over your {max_notice}-day limit.",
                 "Medium",
-                f"Reduce notice to {policy['max_renewal_notice_days']} days.",
+                f"Reduce notice to {max_notice} days.",
                 category="Auto-renewal",
-                rule_value=f"≤ {policy['max_renewal_notice_days']} days",
+                rule_value=f"≤ {max_notice} days",
                 contract_value=f"{notice} days",
                 **loc(f),
             ))
 
     # 3. Liability checks
     liab = by("liability")
-    if policy["require_liability_cap"]:
+    req_cap = bool(policy.get("require_liability_cap", True))
+    if req_cap:
         if not liab:
             flags.append(Flag(
                 "MISSING",
@@ -178,7 +214,7 @@ def evaluate(findings, policy):
                 contract_value="Not found",
             ))
         for f in liab:
-            if not f["value"].get("capped"):
+            if not f.get("value", {}).get("capped"):
                 flags.append(Flag(
                     "CONFLICT",
                     "Liability must be capped",
@@ -192,10 +228,10 @@ def evaluate(findings, policy):
                 ))
 
         # Check for contradictory liability terms (both capped and uncapped)
-        has_capped = any(f["value"].get("capped") for f in liab)
-        has_uncapped = any(not f["value"].get("capped") for f in liab)
+        has_capped = any(bool(f.get("value", {}).get("capped")) for f in liab)
+        has_uncapped = any(not bool(f.get("value", {}).get("capped")) for f in liab)
         if has_capped and has_uncapped:
-            first_uncapped = next(f for f in liab if not f["value"].get("capped"))
+            first_uncapped = next(f for f in liab if not bool(f.get("value", {}).get("capped")))
             flags.append(Flag(
                 "WARNING",
                 "Contradictory liability terms",
@@ -210,31 +246,37 @@ def evaluate(findings, policy):
 
     # 4. Jurisdiction checks
     jur = by("jurisdiction")
-    allowed = [a.lower().strip() for a in policy.get("allowed_jurisdictions", ["India"])]
+    raw_allowed = policy.get("allowed_jurisdictions", ["India"])
+    if isinstance(raw_allowed, str):
+        raw_allowed = [j.strip() for j in raw_allowed.split(",") if j.strip()]
+    elif not isinstance(raw_allowed, list):
+        raw_allowed = [str(raw_allowed)]
+    allowed = [str(a).lower().strip() for a in raw_allowed if str(a).strip()]
+    pref_jur = raw_allowed[0] if raw_allowed else "India"
+
     if not jur:
-        pref = policy.get("allowed_jurisdictions", ["India"])[0]
         flags.append(Flag(
             "MISSING",
             "Governing law",
             "No governing law or jurisdiction found.",
             "Medium",
-            f"Add: 'This agreement shall be governed by the laws of {pref}.'",
+            f"Add: 'This agreement shall be governed by the laws of {pref_jur}.'",
             category="Jurisdiction",
-            rule_value=", ".join(policy.get("allowed_jurisdictions", ["India"])),
+            rule_value=", ".join(raw_allowed) if raw_allowed else "India",
             contract_value="Not found",
         ))
     for f in jur:
-        loc_str = str(f["value"].get("location", "")).strip()
+        loc_str = str(f.get("value", {}).get("location", "")).strip()
         loc_low = loc_str.lower()
         if not any(a in loc_low for a in allowed):
             flags.append(Flag(
                 "CONFLICT",
                 "Allowed jurisdictions",
-                f"Disputes governed by {loc_str}, not your preferred jurisdictions ({', '.join(policy['allowed_jurisdictions'])}).",
+                f"Disputes governed by {loc_str}, not your preferred jurisdictions ({', '.join(raw_allowed)}).",
                 "Medium",
-                f"Request {policy['allowed_jurisdictions'][0]} law and courts.",
+                f"Request {pref_jur} law and courts.",
                 category="Jurisdiction",
-                rule_value=", ".join(policy["allowed_jurisdictions"]),
+                rule_value=", ".join(raw_allowed) if raw_allowed else "India",
                 contract_value=loc_str,
                 **loc(f),
             ))

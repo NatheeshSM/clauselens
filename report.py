@@ -14,28 +14,46 @@ CATEGORIES = [
 
 
 def _rule_text(key, p):
+    max_pay = p.get("max_payment_days", 30)
+    max_notice = p.get("max_renewal_notice_days", 30)
+    allow_renew = p.get("allow_auto_renewal", False)
+    req_cap = p.get("require_liability_cap", True)
+    allowed_jur = p.get("allowed_jurisdictions", ["India"])
+    if isinstance(allowed_jur, str):
+        allowed_jur = [j.strip() for j in allowed_jur.split(",") if j.strip()]
+    elif not isinstance(allowed_jur, list):
+        allowed_jur = [str(allowed_jur)]
+
     return {
-        "payment": f"≤ {p['max_payment_days']} days",
-        "renewal": "No auto-renewal" if not p["allow_auto_renewal"] else f"Cancel notice ≤ {p['max_renewal_notice_days']} days",
-        "liability": "Must be capped" if p["require_liability_cap"] else "No requirement",
-        "jurisdiction": ", ".join(p.get("allowed_jurisdictions", ["India"])),
+        "payment": f"≤ {max_pay} days",
+        "renewal": "No auto-renewal" if not allow_renew else f"Cancel notice ≤ {max_notice} days",
+        "liability": "Must be capped" if req_cap else "No requirement",
+        "jurisdiction": ", ".join(str(j) for j in allowed_jur),
     }[key]
 
 
 def _contract_text(key, items):
     if key == "renewal":
-        r = [i for i in items if i["value"].get("renews")]
+        r = [i for i in items if i.get("value", {}).get("renews")]
         if not r:
             return "No auto-renewal clause found"
-        n = r[0]["value"].get("notice_days")
+        n = r[0].get("value", {}).get("notice_days")
         return "Auto-renews" + (f", {n} days' notice" if n else "")
     if not items:
         return "Not found"
     if key == "payment":
-        return " / ".join(dict.fromkeys(f"{i['value']['days']} days" for i in items))
+        parts = []
+        for i in items:
+            v = i.get("value", {})
+            d = v.get("days")
+            if d is not None:
+                parts.append(f"{d} days")
+            else:
+                parts.append("Payment specified")
+        return " / ".join(dict.fromkeys(parts)) if parts else "Not found"
     if key == "liability":
-        return "Unlimited / uncapped" if any(not i["value"].get("capped") for i in items) else "Capped"
-    return ", ".join(dict.fromkeys(str(i["value"]["location"]) for i in items))
+        return "Unlimited / uncapped" if any(not i.get("value", {}).get("capped") for i in items) else "Capped"
+    return ", ".join(dict.fromkeys(str(i.get("value", {}).get("location", "")) for i in items if i.get("value", {}).get("location"))) or "Not found"
 
 
 def build_checks(findings, flags, policy):
