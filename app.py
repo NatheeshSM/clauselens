@@ -26,7 +26,7 @@ import cloud
 import db
 from doc_parser import parse_file
 from pipeline import analyze
-from rules import DEFAULT_POLICY, PRESETS, infer_policy_from_example
+from rules import DEFAULT_POLICY, PRESETS, infer_policy_from_example, parse_user_defined_policy
 import report
 import importlib
 importlib.reload(report)
@@ -362,14 +362,56 @@ def inject_custom_css():
 def sidebar_policy():
     with st.sidebar:
         st.markdown("### ⚙️ Review Policy")
-        preset_choice = st.selectbox("Policy Preset", list(PRESETS.keys()), index=0)
-        p_template = PRESETS[preset_choice]
 
-        with st.expander("Customize Rules", expanded=False):
-            max_pay = st.number_input("Max Payment Delay (days)", 1, 365, p_template["max_payment_days"])
-            allow_renew = st.checkbox("Allow Auto-Renewal", p_template["allow_auto_renewal"])
-            max_notice = st.number_input("Max Cancellation Notice (days)", 1, 365, p_template["max_renewal_notice_days"])
-            req_cap = st.checkbox("Require Liability Cap", p_template["require_liability_cap"])
+        preset_options = [
+            "Predefined: Freelancer (strict)",
+            "Predefined: Small vendor (relaxed)",
+            "Predefined: Enterprise agency",
+            "User Defined",
+        ]
+
+        preset_choice = st.selectbox("Policy Preset", preset_options, index=0)
+
+        if preset_choice.startswith("Predefined:"):
+            preset_name = preset_choice.replace("Predefined: ", "")
+            p_template = PRESETS.get(preset_name, DEFAULT_POLICY)
+        else:
+            st.markdown("#### ✍️ User Defined Policy")
+            st.caption("Type your custom policy terms in plain language below. ClauseLens will parse your requirements and enforce them across every contract audit.")
+
+            user_policy_text = st.text_area(
+                "Policy Typing Bar:",
+                value=st.session_state.get(
+                    "user_defined_policy_text",
+                    "Payment within 30 days, no auto-renewal, require liability cap, allowed in India"
+                ),
+                placeholder="e.g. Payment due within 45 days, no auto-renewal, liability must be capped, allowed in India, Singapore, and check IP risks.",
+                key="user_policy_typing_bar",
+                help="Type custom requirements such as maximum payment delay, auto-renewal terms, liability limitations, and allowed governing jurisdictions.",
+            )
+            st.session_state["user_defined_policy_text"] = user_policy_text
+            p_template = parse_user_defined_policy(user_policy_text)
+
+            st.markdown(
+                f"""
+                <div style="background:rgba(124, 92, 255, 0.12); border:1px solid rgba(124, 92, 255, 0.32); border-radius:10px; padding:0.6rem 0.8rem; margin:0.4rem 0 0.8rem 0; font-size:0.82rem;">
+                    <div><strong style="color:#a78bfa;">⚡ Active Parsed Policy:</strong></div>
+                    <div>• <strong>Payment:</strong> ≤ {p_template['max_payment_days']} days</div>
+                    <div>• <strong>Auto-Renewal:</strong> {'Allowed' if p_template['allow_auto_renewal'] else 'Disallowed'} (Notice: ≤ {p_template['max_renewal_notice_days']}d)</div>
+                    <div>• <strong>Liability Cap:</strong> {'Required' if p_template['require_liability_cap'] else 'Optional'}</div>
+                    <div>• <strong>Jurisdictions:</strong> {', '.join(p_template['allowed_jurisdictions'])}</div>
+                    <div>• <strong>Advanced Sensors:</strong> {'Active (IP / Non-compete / Termination)' if p_template['check_advanced_risks'] else 'Standard'}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        expander_label = "Fine-Tune Rule Parameters" if preset_choice == "User Defined" else "Customize Rules"
+        with st.expander(expander_label, expanded=(preset_choice == "User Defined")):
+            max_pay = st.number_input("Max Payment Delay (days)", 1, 365, int(p_template["max_payment_days"]))
+            allow_renew = st.checkbox("Allow Auto-Renewal", bool(p_template["allow_auto_renewal"]))
+            max_notice = st.number_input("Max Cancellation Notice (days)", 1, 365, int(p_template["max_renewal_notice_days"]))
+            req_cap = st.checkbox("Require Liability Cap", bool(p_template["require_liability_cap"]))
             raw_jurisdictions = st.text_input(
                 "Allowed Jurisdictions (comma-separated)",
                 ", ".join(p_template["allowed_jurisdictions"]),
@@ -377,7 +419,7 @@ def sidebar_policy():
             allowed_jur = [j.strip() for j in raw_jurisdictions.split(",") if j.strip()]
             adv_risks = st.checkbox(
                 "⚡ Advanced Sensors (IP, Non-Compete, Termination)",
-                value=p_template.get("check_advanced_risks", False),
+                value=bool(p_template.get("check_advanced_risks", False)),
                 help="Flags full IP/moral rights assignments, non-compete restraints, and unilateral termination for convenience.",
             )
 

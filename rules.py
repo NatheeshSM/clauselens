@@ -1,4 +1,5 @@
 """Step 4: deterministic policy engine. No LLM here: every flag is plain, explainable code."""
+import re
 from dataclasses import dataclass, asdict
 
 DEFAULT_POLICY = {
@@ -79,6 +80,74 @@ def infer_policy_from_example(findings):
     jurisdictions = [f.get("value", {}).get("location") for f in findings if f["type"] == "jurisdiction"]
     if jurisdictions:
         policy["allowed_jurisdictions"] = list(dict.fromkeys([str(j).strip() for j in jurisdictions if j]))
+    return policy
+
+
+def parse_user_defined_policy(text: str, base_policy=None) -> dict:
+    """Parses free-form natural language requirements or rule specifications into a validated policy dict."""
+    if not base_policy:
+        base_policy = dict(DEFAULT_POLICY)
+    policy = dict(base_policy)
+    if not text or not str(text).strip():
+        return policy
+
+    low = str(text).lower()
+
+    # 1. Max payment days (e.g., 'within 45 days', 'net 15', 'pay 60 days', '2 months')
+    pay_m = (
+        re.search(r"(?:payment|pay|invoice|within|net|delay|terms?)\s*[:=]?\s*(?:within\s*)?(\d+)\s*(days?|months?)?", low)
+        or re.search(r"\b(\d+)\s*(days?|months?)\s*(?:payment|delay|invoice)?", low)
+    )
+    if pay_m:
+        val = int(pay_m.group(1))
+        unit = pay_m.group(2) or "days"
+        if "month" in unit:
+            val = val * 30
+        policy["max_payment_days"] = val
+
+    # 2. Auto-renewal
+    if re.search(r"\b(?:no\s+auto-?renewal|forbid\s+auto-?renewal|disallow\s+auto-?renewal|prevent\s+auto-?renewal|without\s+auto-?renewal|no\s+renewal)\b", low):
+        policy["allow_auto_renewal"] = False
+    elif re.search(r"\b(?:allow\s+auto-?renewal|permit\s+auto-?renewal|accept\s+auto-?renewal|auto-?renewal\s+allowed|allow\s+renewal)\b", low):
+        policy["allow_auto_renewal"] = True
+
+    # 3. Cancellation notice days
+    notice_m = (
+        re.search(r"(?:notice|cancellation|cancel)\s*(?:period|window|days)?\s*[:=]?\s*(?:within\s*)?(\d+)\s*days?", low)
+        or re.search(r"\b(\d+)\s*days?\s*(?:cancellation\s+|cancel\s+)?notice", low)
+    )
+    if notice_m:
+        policy["max_renewal_notice_days"] = int(notice_m.group(1))
+
+    # 4. Liability cap
+    if re.search(r"\b(?:no\s+liability\s+cap|uncapped\s+liability|unlimited\s+liability|without\s+cap)\b", low):
+        policy["require_liability_cap"] = False
+    elif re.search(r"\b(?:require\s+liability\s+cap|capped\s+liability|must\s+be\s+capped|require\s+cap|cap\s+liability|capped)\b", low):
+        policy["require_liability_cap"] = True
+
+    # 5. Allowed jurisdictions
+    known_jurisdictions = [
+        "India", "Singapore", "United States", "USA", "US", "United Kingdom", "UK",
+        "England", "Delaware", "New York", "California", "Germany", "France",
+        "Australia", "Canada", "Dubai", "UAE", "Hong Kong", "Chennai", "Bangalore", "Mumbai"
+    ]
+    jur_m = re.search(r"(?:jurisdictions?|governing\s+law|courts?|location)\s*[:=]\s*([^\n;.]+)", text, re.I)
+    if jur_m:
+        raw_jurs = [j.strip() for j in re.split(r"[,/|;]|\band\b", jur_m.group(1)) if j.strip()]
+        if raw_jurs:
+            policy["allowed_jurisdictions"] = raw_jurs
+    else:
+        found_j = []
+        for kj in known_jurisdictions:
+            if re.search(r"\b" + re.escape(kj.lower()) + r"\b", low):
+                found_j.append(kj)
+        if found_j:
+            policy["allowed_jurisdictions"] = found_j
+
+    # 6. Advanced sensors (IP, non-compete, termination)
+    if re.search(r"\b(?:ip|intellectual\s+property|moral\s+rights|non-?compete|exclusivity|termination|convenience)\b", low):
+        policy["check_advanced_risks"] = True
+
     return policy
 
 

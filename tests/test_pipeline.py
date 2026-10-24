@@ -114,3 +114,17 @@ def test_ground_truth_benchmark_suite():
     assert report["accuracy_pct"] == 97.0
     assert report["passed_contracts"] == report["total_contracts"] == 5
     assert report["passed_checks"] == report["total_checks"] == 20
+
+
+def test_parse_user_defined_policy():
+    from rules import parse_user_defined_policy
+    prompt = "Payment within 45 days, allow auto-renewal with 60 days cancellation notice, require liability cap, allowed jurisdictions: India, Singapore, United States, check IP and non-compete"
+    policy = parse_user_defined_policy(prompt)
+    assert policy["max_payment_days"] == 45
+    assert policy["allow_auto_renewal"] is True
+    assert policy["max_renewal_notice_days"] == 60
+    assert policy["require_liability_cap"] is True
+    assert "India" in policy["allowed_jurisdictions"]
+    assert "Singapore" in policy["allowed_jurisdictions"]
+    assert policy["check_advanced_risks"] is True
+
